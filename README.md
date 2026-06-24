@@ -5,7 +5,7 @@ AI-powered receipt template editor. Browse, crawl, generate, and edit receipt te
 ## Features
 
 - **Template Gallery** — 6 built-in receipt templates (retail, restaurant, hotel, gas station, medical, grocery)
-- **AI Editing** — Describe changes in plain English; Gemini AI updates the receipt
+- **AI Editing** — Describe changes in plain English; Ollama AI updates the receipt
 - **Custom Generation** — Describe any receipt type and AI creates it from scratch
 - **Web Crawler** — Discover receipt templates from popular template sites
 - **Manual Editor** — Direct field-by-field editing with live preview
@@ -15,24 +15,40 @@ AI-powered receipt template editor. Browse, crawl, generate, and edit receipt te
 
 - **Frontend:** React, Vite, TypeScript, Tailwind CSS
 - **Backend:** Express.js, TypeScript
-- **AI:** Google Gemini 2.0 Flash
+- **AI:** Ollama (local LLM)
 - **Crawling:** Cheerio + Axios
 
 ## Setup
 
-```bash
-# Install all dependencies
-npm install
-cd client && npm install
-cd ../server && npm install
-cd ..
+1. Install and start Ollama:
+   ```bash
+   # Install Ollama from https://ollama.com
+   # Pull a model (e.g., llama3.1)
+   ollama pull llama3.1
+   # Start Ollama server (runs on http://localhost:11434 by default)
+   ollama serve
+   ```
 
-# Set your Gemini API key
-export GEMINI_API_KEY=your_key_here
+2. Install dependencies:
+   ```bash
+   npm install
+   cd client && npm install
+   cd ../server && npm install
+   cd ..
+   ```
 
-# Run development servers
-npm run dev
-```
+3. Configure environment variables:
+   ```bash
+   cp server/.env.example server/.env
+   ```
+   Edit `server/.env` to configure Ollama host and model (defaults are provided).
+
+4. Start the development servers:
+   ```bash
+   npm run dev
+   ```
+
+> **Note:** `server/.env` is gitignored. Never commit sensitive configuration to version control.
 
 The client runs on `http://localhost:5173` and proxies API requests to the server on port 3001.
 

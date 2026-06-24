@@ -1,23 +1,20 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { Ollama } from 'ollama';
 import type { ReceiptTemplate, ReceiptField } from './crawler.js';
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://localhost:11434';
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'llama3.1';
 
-function getModel() {
-  if (!GEMINI_API_KEY) {
-    throw new Error('GEMINI_API_KEY environment variable is not set');
-  }
-  const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-  return genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+function getClient() {
+  return new Ollama({ host: OLLAMA_HOST });
 }
 
 export async function editTemplateWithAI(
   template: ReceiptTemplate,
   userPrompt: string
 ): Promise<{ updatedFields: ReceiptField[]; explanation: string }> {
-  const model = getModel();
+  const ollama = getClient();
 
-  const systemPrompt = `You are a receipt template editor AI. The user has a receipt template with specific fields and values. 
+  const systemPrompt = `You are a receipt template editor AI. The user has a receipt template with specific fields and values.
 They will describe changes they want to make in natural language. You must return the updated fields as a JSON array.
 
 Current template: "${template.name}" (${template.category})
@@ -36,12 +33,15 @@ Rules:
 8. For currency values, return just the number as a string (e.g., "29.99" not "$29.99").
 9. ONLY return the JSON object. No markdown, no code blocks, no extra text.`;
 
-  const result = await model.generateContent([
-    { text: systemPrompt },
-    { text: `User request: ${userPrompt}` },
-  ]);
+  const result = await ollama.chat({
+    model: OLLAMA_MODEL,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: `User request: ${userPrompt}` },
+    ],
+  });
 
-  const responseText = result.response.text().trim();
+  const responseText = result.message.content.trim();
 
   let cleanedText = responseText;
   if (cleanedText.startsWith('```')) {
@@ -75,7 +75,7 @@ Rules:
 export async function generateTemplateFromDescription(
   description: string
 ): Promise<{ fields: ReceiptField[]; name: string; category: string }> {
-  const model = getModel();
+  const ollama = getClient();
 
   const prompt = `Generate a receipt template based on this description: "${description}"
 
@@ -91,8 +91,14 @@ Return a JSON object with:
 Make the receipt realistic with proper formatting. Include store info, items, subtotal, tax, and total.
 ONLY return the JSON object. No markdown, no code blocks, no extra text.`;
 
-  const result = await model.generateContent(prompt);
-  const responseText = result.response.text().trim();
+  const result = await ollama.chat({
+    model: OLLAMA_MODEL,
+    messages: [
+      { role: 'user', content: prompt },
+    ],
+  });
+
+  const responseText = result.message.content.trim();
 
   let cleanedText = responseText;
   if (cleanedText.startsWith('```')) {
