@@ -239,6 +239,12 @@ function generateRetailHtml(fields: ReceiptField[], g: (k: string) => string): s
 }
 
 function generateRestaurantHtml(fields: ReceiptField[], g: (k: string) => string): string {
+  const items = fields.filter(f => f.key.match(/^item\d+$/) && !f.key.includes('Price'));
+  let itemRows = '';
+  for (const item of items) {
+    const num = item.key.replace('item', '');
+    itemRows += `<tr><td>${g(`item${num}`)}</td><td style="text-align: right;">$${g(`item${num}Price`)}</td></tr>\n`;
+  }
   return `<div style="font-family: 'Georgia', serif; max-width: 340px; margin: 0 auto; padding: 24px; background: white;">
   <div style="text-align: center; border-bottom: 1px solid #333; padding-bottom: 12px; margin-bottom: 16px;">
     <h2 style="margin: 0; font-size: 22px; font-style: italic;">${g('restaurantName')}</h2>
@@ -250,9 +256,7 @@ function generateRestaurantHtml(fields: ReceiptField[], g: (k: string) => string
   </div>
   <div style="font-size: 12px; margin-bottom: 12px;">${g('date')}</div>
   <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
-    <tr><td>${g('item1')}</td><td style="text-align: right;">$${g('item1Price')}</td></tr>
-    <tr><td>${g('item2')}</td><td style="text-align: right;">$${g('item2Price')}</td></tr>
-    <tr><td>${g('item3')}</td><td style="text-align: right;">$${g('item3Price')}</td></tr>
+    ${itemRows}
   </table>
   <div style="border-top: 1px solid #333; margin-top: 10px; padding-top: 8px; font-size: 13px;">
     <div style="display: flex; justify-content: space-between;"><span>Subtotal</span><span>$${g('subtotal')}</span></div>
@@ -325,6 +329,12 @@ function generateGasStationHtml(fields: ReceiptField[], g: (k: string) => string
 }
 
 function generateMedicalHtml(fields: ReceiptField[], g: (k: string) => string): string {
+  const services = fields.filter(f => f.key.match(/^service\d+$/) && !f.key.includes('Cost'));
+  let serviceRows = '';
+  for (const service of services) {
+    const num = service.key.replace('service', '');
+    serviceRows += `<tr><td>${g(`service${num}`)}</td><td style="text-align: right;">$${g(`service${num}Cost`)}</td></tr>\n`;
+  }
   return `<div style="font-family: 'Arial', sans-serif; max-width: 380px; margin: 0 auto; padding: 24px; background: white; border: 1px solid #e0e0e0;">
   <div style="border-bottom: 2px solid #2563eb; padding-bottom: 12px; margin-bottom: 16px;">
     <h2 style="margin: 0; font-size: 20px; color: #2563eb;">${g('practiceName')}</h2>
@@ -336,8 +346,7 @@ function generateMedicalHtml(fields: ReceiptField[], g: (k: string) => string): 
     <div><strong>Visit Date:</strong> ${g('visitDate')}</div>
   </div>
   <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
-    <tr><td>${g('service1')}</td><td style="text-align: right;">$${g('service1Cost')}</td></tr>
-    <tr><td>${g('service2')}</td><td style="text-align: right;">$${g('service2Cost')}</td></tr>
+    ${serviceRows}
   </table>
   <div style="border-top: 1px solid #ddd; margin-top: 10px; padding-top: 8px; font-size: 13px;">
     <div style="display: flex; justify-content: space-between; color: #16a34a;"><span>Insurance Adjustment</span><span>${g('insuranceAdj')}</span></div>
