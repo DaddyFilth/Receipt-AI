@@ -27,16 +27,20 @@ router.get('/templates/:id', (req: Request<{ id: string }>, res: Response) => {
 
 router.post('/templates/:id/edit', async (req: Request<{ id: string }>, res: Response) => {
   try {
-    const template = getTemplateById(req.params.id);
+    const { prompt, currentFields, template: templateFromBody } = req.body as {
+      prompt: string;
+      currentFields?: ReceiptField[];
+      template?: ReceiptTemplate;
+    };
+
+    // Built-in templates are looked up server-side. AI-generated (custom-*)
+    // templates only exist in client state, so fall back to the template
+    // sent in the request body.
+    const template = getTemplateById(req.params.id) ?? templateFromBody;
     if (!template) {
       res.status(404).json({ error: 'Template not found' });
       return;
     }
-
-    const { prompt, currentFields } = req.body as {
-      prompt: string;
-      currentFields?: ReceiptField[];
-    };
 
     if (!prompt || typeof prompt !== 'string') {
       res.status(400).json({ error: 'Prompt is required' });

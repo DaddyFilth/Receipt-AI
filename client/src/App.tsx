@@ -48,7 +48,7 @@ export default function App() {
     setAiLoading(true);
     setExplanation('');
     try {
-      const result = await editTemplate(selectedTemplate.id, prompt, currentFields);
+      const result = await editTemplate(selectedTemplate.id, prompt, currentFields, selectedTemplate);
       setCurrentFields(result.fields);
       setCurrentHtml(result.html);
       setExplanation(result.explanation);

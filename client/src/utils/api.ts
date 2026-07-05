@@ -42,12 +42,13 @@ export async function fetchTemplate(id: string): Promise<ReceiptTemplate> {
 export async function editTemplate(
   id: string,
   prompt: string,
-  currentFields?: ReceiptField[]
+  currentFields?: ReceiptField[],
+  template?: ReceiptTemplate
 ): Promise<{ fields: ReceiptField[]; html: string; explanation: string }> {
   const res = await fetch(`${API_BASE}/templates/${id}/edit`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt, currentFields }),
+    body: JSON.stringify({ prompt, currentFields, template }),
   });
   if (!res.ok) {
     const err = (await res.json()) as { error: string };
