@@ -10,7 +10,11 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-app.use(cors());
+// Restrict CORS to a configurable origin instead of allowing any site.
+// Defaults to the Vite dev server origin; set CORS_ORIGIN in production.
+const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:5173';
+
+app.use(cors({ origin: corsOrigin }));
 app.use(express.json({ limit: '10mb' }));
 
 app.use('/api', templateRoutes);

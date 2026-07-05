@@ -1,4 +1,5 @@
 import React, { useRef } from 'react';
+import DOMPurify from 'dompurify';
 import { Download, RotateCcw } from 'lucide-react';
 
 interface ReceiptPreviewProps {
@@ -10,6 +11,8 @@ interface ReceiptPreviewProps {
 export default function ReceiptPreview({ html, templateName, onReset }: ReceiptPreviewProps) {
   const previewRef = useRef<HTMLDivElement>(null);
 
+  const sanitizedHtml = DOMPurify.sanitize(html);
+
   const handleExportPdf = () => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
@@ -18,7 +21,7 @@ export default function ReceiptPreview({ html, templateName, onReset }: ReceiptP
       <!DOCTYPE html>
       <html>
       <head>
-        <title>${templateName} - Receipt</title>
+        <title>${DOMPurify.sanitize(templateName)} - Receipt</title>
         <style>
           body { margin: 0; padding: 20px; display: flex; justify-content: center; }
           @media print {
@@ -27,7 +30,7 @@ export default function ReceiptPreview({ html, templateName, onReset }: ReceiptP
         </style>
       </head>
       <body>
-        ${html}
+        ${sanitizedHtml}
         <script>
           window.onload = function() { window.print(); window.close(); };
         </script>
@@ -64,7 +67,7 @@ export default function ReceiptPreview({ html, templateName, onReset }: ReceiptP
         <div
           ref={previewRef}
           className="bg-white shadow-xl rounded-lg overflow-hidden"
-          dangerouslySetInnerHTML={{ __html: html }}
+          dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
         />
       </div>
     </div>

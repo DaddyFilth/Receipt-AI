@@ -1,4 +1,5 @@
 import React from 'react';
+import DOMPurify from 'dompurify';
 import { Receipt, Store, UtensilsCrossed, Building2, Fuel, Stethoscope, ShoppingCart } from 'lucide-react';
 import type { ReceiptTemplate } from '../utils/api';
 
@@ -70,7 +71,7 @@ export default function TemplateGallery({ templates, onSelect, loading }: Templa
               <div
                 className="transform scale-50 origin-top-left"
                 style={{ width: '200%' }}
-                dangerouslySetInnerHTML={{ __html: template.html }}
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(template.html) }}
               />
             </div>
           </button>

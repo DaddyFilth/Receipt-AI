@@ -36,6 +36,18 @@ npm run dev
 
 The client runs on `http://localhost:5173` and proxies API requests to the server on port 3001.
 
+## Environment Variables
+
+The server reads the following environment variables (see `server/.env.example`):
+
+| Variable         | Required | Default                 | Description                                                                 |
+| ---------------- | -------- | ----------------------- | --------------------------------------------------------------------------- |
+| `GEMINI_API_KEY` | Yes      | —                       | Google Gemini API key used for AI editing and generation.                   |
+| `PORT`           | No       | `3001`                  | Port the Express server listens on.                                         |
+| `CORS_ORIGIN`    | No       | `http://localhost:5173` | Allowed CORS origin. Set to your frontend URL in production.                |
+
+The AI editing/generation and crawl endpoints are rate limited to prevent abuse.
+
 ## Build for Production
 
 ```bash

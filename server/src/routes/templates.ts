@@ -1,4 +1,5 @@
 import { Router, type Request, type Response } from 'express';
+import rateLimit from 'express-rate-limit';
 import {
   getBuiltInTemplates,
   getTemplateById,
@@ -8,8 +9,27 @@ import {
   type ReceiptField,
 } from '../services/crawler.js';
 import { editTemplateWithAI, generateTemplateFromDescription } from '../services/ai.js';
+import { receiptTemplateSchema } from '../schemas.js';
 
 const router = Router();
+
+// Limit expensive endpoints (AI calls, outbound crawling) to prevent abuse
+// of the paid Gemini API and the server's outbound network access.
+const aiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later.' },
+});
+
+const crawlLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many crawl requests, please try again later.' },
+});
 
 router.get('/templates', (_req: Request, res: Response) => {
   const templates = getBuiltInTemplates();
@@ -25,30 +45,50 @@ router.get('/templates/:id', (req: Request<{ id: string }>, res: Response) => {
   res.json({ template });
 });
 
-router.post('/templates/:id/edit', async (req: Request<{ id: string }>, res: Response) => {
+router.post('/templates/:id/edit', aiLimiter, async (req: Request<{ id: string }>, res: Response) => {
   try {
     const { prompt, currentFields, template: templateFromBody } = req.body as {
       prompt: string;
       currentFields?: ReceiptField[];
-      template?: ReceiptTemplate;
+      template?: unknown;
     };
-
-    // Built-in templates are looked up server-side. AI-generated (custom-*)
-    // templates only exist in client state, so fall back to the template
-    // sent in the request body.
-    const template = getTemplateById(req.params.id) ?? templateFromBody;
-    if (!template) {
-      res.status(404).json({ error: 'Template not found' });
-      return;
-    }
 
     if (!prompt || typeof prompt !== 'string') {
       res.status(400).json({ error: 'Prompt is required' });
       return;
     }
 
-    const workingTemplate: ReceiptTemplate = currentFields
-      ? { ...template, fields: currentFields }
+    // Built-in templates are looked up server-side. AI-generated (custom-*)
+    // templates only exist in client state, so fall back to the validated
+    // template sent in the request body.
+    let bodyTemplate: ReceiptTemplate | undefined;
+    if (templateFromBody !== undefined) {
+      const parsed = receiptTemplateSchema.safeParse(templateFromBody);
+      if (!parsed.success) {
+        res.status(400).json({ error: 'Invalid template data' });
+        return;
+      }
+      bodyTemplate = parsed.data;
+    }
+
+    const template = getTemplateById(req.params.id) ?? bodyTemplate;
+    if (!template) {
+      res.status(404).json({ error: 'Template not found' });
+      return;
+    }
+
+    let validatedFields: ReceiptField[] | undefined;
+    if (currentFields !== undefined) {
+      const parsed = receiptTemplateSchema.shape.fields.safeParse(currentFields);
+      if (!parsed.success) {
+        res.status(400).json({ error: 'Invalid field data' });
+        return;
+      }
+      validatedFields = parsed.data;
+    }
+
+    const workingTemplate: ReceiptTemplate = validatedFields
+      ? { ...template, fields: validatedFields }
       : template;
 
     const result = await editTemplateWithAI(workingTemplate, prompt);
@@ -72,12 +112,17 @@ router.post('/templates/:id/edit', async (req: Request<{ id: string }>, res: Res
   }
 });
 
-router.post('/templates/generate', async (req: Request, res: Response) => {
+router.post('/templates/generate', aiLimiter, async (req: Request, res: Response) => {
   try {
     const { description } = req.body as { description: string };
 
     if (!description || typeof description !== 'string') {
       res.status(400).json({ error: 'Description is required' });
+      return;
+    }
+
+    if (description.length > 2000) {
+      res.status(400).json({ error: 'Description is too long' });
       return;
     }
 
@@ -106,12 +151,17 @@ router.post('/templates/generate', async (req: Request, res: Response) => {
 
 router.post('/templates/render', (req: Request, res: Response) => {
   try {
-    const { template } = req.body as { template: ReceiptTemplate };
+    const { template } = req.body as { template?: unknown };
     if (!template) {
       res.status(400).json({ error: 'Template data is required' });
       return;
     }
-    const html = renderTemplateHtml(template);
+    const parsed = receiptTemplateSchema.safeParse(template);
+    if (!parsed.success) {
+      res.status(400).json({ error: 'Invalid template data' });
+      return;
+    }
+    const html = renderTemplateHtml(parsed.data);
     res.json({ html });
   } catch (error) {
     console.error('Render error:', error);
@@ -119,7 +169,7 @@ router.post('/templates/render', (req: Request, res: Response) => {
   }
 });
 
-router.get('/crawl', async (_req: Request, res: Response) => {
+router.get('/crawl', crawlLimiter, async (_req: Request, res: Response) => {
   try {
     const results = await crawlReceiptSites();
     res.json({ results });

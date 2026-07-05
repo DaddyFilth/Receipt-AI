@@ -178,9 +178,20 @@ const BUILT_IN_TEMPLATES: ReceiptTemplate[] = [
   },
 ];
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function generateTemplateHtml(template: ReceiptTemplate): string {
   const fields = template.fields;
-  const getField = (key: string) => fields.find(f => f.key === key)?.value ?? '';
+  // Escape field values at the point of interpolation to prevent HTML/JS
+  // injection via user-editable or AI-generated field values.
+  const getField = (key: string) => escapeHtml(fields.find(f => f.key === key)?.value ?? '');
 
   switch (template.id) {
     case 'retail-basic':
@@ -224,7 +235,7 @@ function generateRetailHtml(fields: ReceiptField[], g: (k: string) => string): s
   </table>
   <div style="border-top: 1px dashed #333; margin-top: 8px; padding-top: 8px; font-size: 13px;">
     <div style="display: flex; justify-content: space-between;"><span>Subtotal</span><span>$${g('subtotal')}</span></div>
-    <div style="display: flex; justify-content: space-between;"><span>${fields.find(f => f.key === 'tax')?.label ?? 'Tax'}</span><span>$${g('tax')}</span></div>
+    <div style="display: flex; justify-content: space-between;"><span>${escapeHtml(fields.find(f => f.key === 'tax')?.label ?? 'Tax')}</span><span>$${g('tax')}</span></div>
   </div>
   <div style="border-top: 2px solid #333; margin-top: 8px; padding-top: 8px; font-size: 16px; font-weight: bold; display: flex; justify-content: space-between;">
     <span>TOTAL</span><span>$${g('total')}</span>
@@ -292,7 +303,7 @@ function generateHotelHtml(fields: ReceiptField[], g: (k: string) => string): st
     <tr><td>Parking</td><td style="text-align: right;">$${g('parking')}</td></tr>
   </table>
   <div style="border-top: 1px solid #ddd; margin-top: 10px; padding-top: 8px; font-size: 13px;">
-    <div style="display: flex; justify-content: space-between;"><span>${fields.find(f => f.key === 'tax')?.label ?? 'Tax'}</span><span>$${g('tax')}</span></div>
+    <div style="display: flex; justify-content: space-between;"><span>${escapeHtml(fields.find(f => f.key === 'tax')?.label ?? 'Tax')}</span><span>$${g('tax')}</span></div>
   </div>
   <div style="border-top: 2px solid #1a1a2e; margin-top: 8px; padding-top: 10px; font-size: 18px; font-weight: bold; display: flex; justify-content: space-between; color: #1a1a2e;">
     <span>Total</span><span>$${g('total')}</span>
@@ -393,10 +404,10 @@ function generateGenericHtml(fields: ReceiptField[], name: string): string {
   let rows = '';
   for (const f of fields) {
     const prefix = f.type === 'currency' ? '$' : '';
-    rows += `<tr><td style="padding: 4px 8px;">${f.label}</td><td style="padding: 4px 8px; text-align: right;">${prefix}${f.value}</td></tr>\n`;
+    rows += `<tr><td style="padding: 4px 8px;">${escapeHtml(f.label)}</td><td style="padding: 4px 8px; text-align: right;">${prefix}${escapeHtml(f.value)}</td></tr>\n`;
   }
   return `<div style="font-family: monospace; max-width: 340px; margin: 0 auto; padding: 24px; background: white;">
-  <h2 style="text-align: center; margin: 0 0 16px;">${name}</h2>
+  <h2 style="text-align: center; margin: 0 0 16px;">${escapeHtml(name)}</h2>
   <table style="width: 100%; font-size: 13px; border-collapse: collapse;">${rows}</table>
 </div>`;
 }
